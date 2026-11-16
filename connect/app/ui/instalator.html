@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+  <title>Instalator LivePL Connect</title>
+  <link rel="stylesheet" href="instalator.css">
+</head>
+<body>
+  <aside class="marka-panel">
+    <div class="wstega-tlo" aria-hidden="true"></div>
+    <img class="logo" src="../assets/logo.png" alt="" draggable="false">
+    <div class="nazwa"><b>Live<em>PL</em></b><strong>Connect</strong><span>Zdalny pulpit Live Production</span></div>
+    <span class="wersja" id="wersja"></span>
+    <p class="prawa">© Live Production · livepl.eu</p>
+  </aside>
+
+  <section class="tresc">
+    <header class="pasek-okna">
+      <span class="tytul-okna" id="tytul-okna">Instalator LivePL Connect</span>
+      <button type="button" class="okno-przycisk" id="minimalizuj" aria-label="Minimalizuj"></button>
+      <button type="button" class="okno-przycisk zamknij" id="zamknij" aria-label="Zamknij"></button>
+    </header>
+
+    <!-- powitanie -->
+    <div class="ekran" id="ekran-start" hidden>
+      <h1 id="start-tytul">Zainstaluj LivePL Connect</h1>
+      <p class="wstep" id="start-wstep">Zdalny pulpit Live Production: pomóż komuś na odległość albo pozwól, żeby ktoś pomógł Tobie.</p>
+      <ul class="cechy">
+        <li><span class="cecha-ik" data-ik="monitor"></span><div><b>Podgląd i sterowanie</b><span>Widzisz ekran drugiego komputera i sterujesz nim myszą i klawiaturą.</span></div></li>
+        <li><span class="cecha-ik" data-ik="tarcza"></span><div><b>Bezpiecznie</b><span>Połączenie szyfrowane, a każde połączenie wymaga hasła z drugiego komputera.</span></div></li>
+        <li><span class="cecha-ik" data-ik="blyskawica"></span><div><b>Bez konfiguracji</b><span>Stałe ID tego komputera; działa przez internet, także w sieciach domowych i firmowych.</span></div></li>
+      </ul>
+      <label class="opcja"><input type="checkbox" id="opcja-pulpit" checked><span class="znacznik"></span>Skrót na pulpicie</label>
+      <p class="uwaga" id="start-dziala" hidden>LivePL Connect jest teraz uruchomiony. Instalator zamknie go na chwilę.</p>
+      <div class="dol">
+        <p class="gdzie" id="start-gdzie"></p>
+        <div class="przyciski">
+          <button type="button" class="przycisk tekstowy" id="start-anuluj">Anuluj</button>
+          <button type="button" class="przycisk glowny" id="start-instaluj">Zainstaluj</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- odinstalowanie -->
+    <div class="ekran" id="ekran-odinstaluj" hidden>
+      <h1>Odinstaluj LivePL Connect</h1>
+      <p class="wstep" id="odinstaluj-wstep">LivePL Connect zniknie z tego komputera razem ze skrótami w menu Start i na pulpicie.</p>
+      <label class="opcja"><input type="checkbox" id="opcja-dane"><span class="znacznik"></span>Usuń też moje ustawienia (w tym stałe ID tego komputera)</label>
+      <p class="uwaga" id="odinstaluj-dziala" hidden>LivePL Connect jest teraz uruchomiony. Zamknę go przed odinstalowaniem.</p>
+      <div class="dol">
+        <p class="gdzie">Jeśli zostawisz ustawienia, po ponownej instalacji ten komputer dostanie to samo ID.</p>
+        <div class="przyciski">
+          <button type="button" class="przycisk tekstowy" id="odinstaluj-anuluj">Anuluj</button>
+          <button type="button" class="przycisk glowny" id="odinstaluj-tak">Odinstaluj</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- postęp -->
+    <div class="ekran" id="ekran-postep" hidden>
+      <h1 id="postep-tytul">Instaluję LivePL Connect…</h1>
+      <p class="wstep" id="postep-opis">Przygotowuję…</p>
+      <div class="pasek-postepu" aria-hidden="true"><i id="postep-pasek"></i></div>
+      <p class="procent" id="postep-procent">0%</p>
+    </div>
+
+    <!-- gotowe -->
+    <div class="ekran srodek" id="ekran-gotowe" hidden>
+      <div class="gotowe-ik" id="gotowe-ik"></div>
+      <h1 id="gotowe-tytul">LivePL Connect jest gotowy</h1>
+      <p class="wstep" id="gotowe-opis"></p>
+      <div class="przyciski">
+        <button type="button" class="przycisk tekstowy" id="gotowe-zamknij">Zamknij</button>
+        <button type="button" class="przycisk glowny" id="gotowe-uruchom">Uruchom LivePL Connect</button>
+      </div>
+    </div>
+
+    <!-- błąd -->
+    <div class="ekran srodek" id="ekran-blad" hidden>
+      <div class="gotowe-ik zly" id="blad-ik"></div>
+      <h1>Coś poszło nie tak</h1>
+      <p class="wstep" id="blad-opis"></p>
+      <div class="przyciski">
+        <button type="button" class="przycisk tekstowy" id="blad-zamknij">Zamknij</button>
+        <button type="button" class="przycisk glowny" id="blad-ponow">Spróbuj jeszcze raz</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="ikony.js"></script>
+  <script src="instalator.js"></script>
+</body>
+</html>

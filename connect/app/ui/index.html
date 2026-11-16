@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data: blob:; connect-src wss: ws:">
+  <title>LivePL Connect</title>
+  <link rel="stylesheet" href="styl.css">
+</head>
+<body>
+  <div class="aplikacja" id="aplikacja">
+    <aside class="marka-panel">
+      <div class="wstega-tlo" aria-hidden="true"></div>
+      <img class="logo" src="../assets/logo.png" alt="" draggable="false">
+      <div class="nazwa">
+        <b>Live<em>PL</em></b>
+        <strong>Connect</strong>
+        <span>Zdalny pulpit Live Production</span>
+      </div>
+      <button type="button" class="wersja" id="wersja" title="O programie"></button>
+      <div class="status-marka" id="status-marka" data-stan="laczenie"><i></i><span>Łączenie…</span></div>
+      <p class="prawa">© Live Production · livepl.eu</p>
+    </aside>
+
+    <section class="tresc">
+      <header class="pasek-okna">
+        <span class="tytul-okna">LivePL Connect</span>
+        <button type="button" class="okno-przycisk" id="otworz-o" title="O programie" data-ik="info"></button>
+        <button type="button" class="okno-przycisk" id="otworz-ustawienia" title="Ustawienia" data-ik="ustawienia"></button>
+        <span class="separator" aria-hidden="true"></span>
+        <button type="button" class="okno-przycisk" data-okno="min" title="Minimalizuj" data-ik="minus"></button>
+        <button type="button" class="okno-przycisk przycisk-max" data-okno="max" title="Maksymalizuj" data-ik="maks"></button>
+        <button type="button" class="okno-przycisk zamknij" data-okno="zamknij" title="Zamknij" data-ik="zamknij"></button>
+      </header>
+
+      <div class="baner" id="baner" hidden>
+        <span class="baner-ik" data-ik="pobrane"></span>
+        <div class="baner-tekst">
+          <b id="baner-tytul">Dostępna nowa wersja</b>
+          <span id="baner-opis"></span>
+          <div class="baner-postep" id="baner-postep" hidden><i id="baner-pasek"></i></div>
+        </div>
+        <button type="button" class="przycisk glowny maly" id="baner-akcja">Zaktualizuj</button>
+      </div>
+
+      <main class="ekran" id="ekran-glowny">
+        <section class="karta karta-ja">
+          <div class="karta-naglowek">
+            <h2>Ten komputer</h2>
+            <span class="chip-stanu" id="stan" data-stan="laczenie"><i></i><span>Łączenie z serwerem…</span></span>
+          </div>
+          <p class="slaby">Podaj te dane osobie, która ma się z Tobą połączyć.</p>
+          <div class="dane">
+            <div class="dana">
+              <span class="etykieta">Twoje ID</span>
+              <div class="wartosc-wiersz">
+                <span class="wartosc id szkielet" id="moje-id">000 000 000</span>
+                <button type="button" class="ikona-przycisk" id="kopiuj-id" title="Kopiuj ID" data-ik="kopiuj" disabled></button>
+              </div>
+            </div>
+            <div class="dana">
+              <span class="etykieta">Hasło</span>
+              <div class="wartosc-wiersz">
+                <span class="wartosc haslo szkielet" id="moje-haslo">000000</span>
+                <button type="button" class="ikona-przycisk" id="kopiuj-haslo" title="Kopiuj hasło" data-ik="kopiuj" disabled></button>
+                <button type="button" class="ikona-przycisk" id="nowe-haslo" title="Nowe hasło" data-ik="odswiez"></button>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="info-stale" id="info-stale" hidden><span data-ik="klucz"></span>Dostęp bez obsługi włączony: działa też stałe hasło</button>
+        </section>
+
+        <section class="karta">
+          <div class="karta-naglowek"><h2>Połącz z innym komputerem</h2></div>
+          <form class="polacz" id="formularz" autocomplete="off" novalidate>
+            <label class="pole pole-id"><span>ID partnera</span><input id="rid" inputmode="numeric" placeholder="123 456 789" maxlength="11" spellcheck="false"></label>
+            <label class="pole pole-haslo"><span>Hasło</span><input id="pw" placeholder="••••••" maxlength="64" spellcheck="false"></label>
+            <button type="submit" class="przycisk glowny duzy" id="polacz"><span class="napis">Połącz</span><span class="krecik-maly" aria-hidden="true"></span><span data-ik="strzalka"></span></button>
+          </form>
+          <p class="komunikat" id="komunikat" role="status"></p>
+        </section>
+
+        <section class="ostatnie">
+          <div class="sekcja-naglowek"><h3>Ostatnie połączenia</h3></div>
+          <ul class="lista-ostatnich" id="ostatnie"></ul>
+          <p class="pusto" id="pusto">Tu pojawią się komputery, z którymi się łączysz.</p>
+        </section>
+
+        <p class="stopka"><span data-ik="tarcza"></span>Połączenie jest szyfrowane, a obraz płynie bezpośrednio między komputerami.</p>
+      </main>
+    </section>
+  </div>
+
+  <!-- ustawienia -->
+  <div class="nakladka" id="ustawienia" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="ust-tytul">
+      <div class="dialog-naglowek">
+        <h2 id="ust-tytul">Ustawienia</h2>
+        <button type="button" class="ikona-przycisk" id="ust-x" title="Zamknij" data-ik="zamknij"></button>
+      </div>
+      <section class="ust-sekcja" aria-labelledby="dostep-tytul">
+        <h3 id="dostep-tytul"><span data-ik="klucz"></span>Dostęp bez obsługi</h3>
+        <p class="slaby maly">Stałe hasło pozwala połączyć się z tym komputerem, gdy nikogo przy nim nie ma, także po aktualizacji i ponownym uruchomieniu. Jednorazowe hasło z karty działa dalej.</p>
+        <div id="stale-brak">
+          <div class="stale-pola">
+            <label class="pole"><span>Stałe hasło</span><input type="password" id="stale-1" autocomplete="new-password" maxlength="64" spellcheck="false"></label>
+            <label class="pole"><span>Powtórz hasło</span><input type="password" id="stale-2" autocomplete="new-password" maxlength="64" spellcheck="false"></label>
+          </div>
+          <div class="dialog-wiersz stale-dol">
+            <p class="slaby maly">Co najmniej 8 znaków. Nie zapisujemy samego hasła, tylko jego bezpieczny skrót.</p>
+            <button type="button" class="przycisk maly glowny" id="stale-ustaw">Ustaw stałe hasło</button>
+          </div>
+        </div>
+        <div class="dialog-wiersz stale-jest" id="stale-jest" hidden>
+          <div class="stale-stan"><span data-ik="ok"></span><div><b>Stałe hasło jest ustawione</b><p class="slaby maly">Po zamknięciu okna LivePL Connect zostaje w tle, przy zegarze.</p></div></div>
+          <div class="przyciski-male">
+            <button type="button" class="przycisk maly" id="stale-zmien">Zmień</button>
+            <button type="button" class="przycisk maly tekstowy" id="stale-usun">Usuń</button>
+          </div>
+        </div>
+        <label class="przelacznik" id="autostart-wiersz"><input type="checkbox" id="ust-autostart"><span class="suwak" aria-hidden="true"></span><span>Uruchamiaj LivePL Connect razem z Windows</span></label>
+      </section>
+
+      <label class="pole"><span>Serwer pośredniczący</span><input id="ust-serwer" spellcheck="false"></label>
+      <p class="slaby maly">Zmieniaj tylko wtedy, gdy administrator podał Ci inny adres.</p>
+      <div class="dialog-wiersz">
+        <div><span class="slaby">Wersja</span> <b id="ust-wersja"></b><p class="slaby maly" id="ust-akt"></p></div>
+        <button type="button" class="przycisk maly" id="ust-sprawdz">Sprawdź aktualizacje</button>
+      </div>
+      <p class="komunikat" id="ust-komunikat"></p>
+      <div class="przyciski">
+        <button type="button" class="przycisk tekstowy" id="ust-domyslny">Przywróć domyślny</button>
+        <span class="odstep"></span>
+        <button type="button" class="przycisk" id="ust-anuluj">Anuluj</button>
+        <button type="button" class="przycisk glowny" id="ust-zapisz">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- o programie -->
+  <div class="nakladka" id="o-programie" hidden>
+    <div class="dialog dialog-o" role="dialog" aria-modal="true" aria-labelledby="o-tytul">
+      <div class="o-gora">
+        <img class="o-ikona" src="../assets/icon.png" alt="" draggable="false">
+        <div class="o-nazwa">
+          <h2 id="o-tytul">LivePL Connect</h2>
+          <span class="slaby">Zdalny pulpit Live Production</span>
+          <span class="o-wersja" id="o-wersja"></span>
+        </div>
+        <button type="button" class="ikona-przycisk" id="o-x" title="Zamknij" data-ik="zamknij"></button>
+      </div>
+      <dl class="o-dane">
+        <dt>Autor i wydawca</dt><dd>Live Production Karol Kowalski</dd>
+        <dt>Licencja</dt><dd>
+          <details class="o-licencja">
+            <summary>Otwarte oprogramowanie, licencja MIT</summary>
+            <pre>MIT License
+
+Copyright (c) 2026 Live Production Karol Kowalski
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+            <p>Program korzysta z Electrona (licencja MIT) i Chromium. Ich licencje są w folderze programu: LICENSE i LICENSES.chromium.html.</p>
+          </details>
+        </dd>
+        <dt>Strony</dt><dd><a href="https://liveproduction.pl/" target="_blank" rel="noopener">liveproduction.pl</a><span class="kropka">·</span><a href="https://livepl.eu/" target="_blank" rel="noopener">livepl.eu</a></dd>
+        <dt>Bezpieczeństwo</dt><dd>Połączenia szyfrowane (WebRTC, DTLS); każda sesja wymaga hasła z drugiego komputera.</dd>
+        <dt>ID komputera</dt><dd id="o-id">—</dd>
+        <dt>Serwer</dt><dd id="o-serwer">—</dd>
+      </dl>
+      <p class="o-prawa" id="o-prawa"></p>
+    </div>
+  </div>
+
+  <!-- sesja zdalna -->
+  <div class="sesja" id="sesja" hidden>
+    <div class="goracy-pas" aria-hidden="true"></div>
+    <header class="sesja-pasek">
+      <span class="sesja-tytul"><span class="sesja-kropka"></span><span data-ik="monitor"></span><span>Zdalny pulpit</span><b id="sesja-id"></b></span>
+      <span class="odstep"></span>
+      <button type="button" class="sesja-przycisk" id="sesja-pelny" title="Pełny ekran (F11)" data-ik="pelny"></button>
+      <button type="button" class="sesja-przycisk rozlacz" id="sesja-rozlacz"><span data-ik="rozlacz"></span>Rozłącz</button>
+      <span class="sesja-okno">
+        <button type="button" class="okno-przycisk" data-okno="min" title="Minimalizuj" data-ik="minus"></button>
+        <button type="button" class="okno-przycisk przycisk-max" data-okno="max" title="Maksymalizuj" data-ik="maks"></button>
+        <button type="button" class="okno-przycisk zamknij" data-okno="zamknij" title="Zamknij" data-ik="zamknij"></button>
+      </span>
+    </header>
+    <div class="sesja-obraz" id="sesja-obraz">
+      <canvas id="ekran" tabindex="0"></canvas>
+      <div class="sesja-laczenie" id="sesja-laczenie">
+        <div class="krecik"></div>
+        <b id="sesja-opis">Łączę z komputerem…</b>
+        <span class="slaby">Pierwszy obraz pojawi się za chwilę.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="ikony.js"></script>
+  <script src="aplikacja.js"></script>
+</body>
+</html>

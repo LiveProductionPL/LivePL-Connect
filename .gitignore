@@ -1,0 +1,30 @@
+# zależności i wyniki budowy
+node_modules/
+dist/
+out/
+*.exe
+*.dll
+*.syso
+*.zip
+*.tar.gz
+*.log
+*-out.txt
+*-err.txt
+connect/server/server
+
+# wdrożenie na serwer Live Production (opis serwera produkcyjnego; zostaje tylko lokalnie)
+connect/deploy/
+
+# klucze, certyfikaty i sekrety
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+
+# stary prototyp programu, zastąpiony przez connect/app/src i connect/app/ui
+connect/app/main.js
+connect/app/renderer.js
+connect/app/preload.js
+connect/app/index.html

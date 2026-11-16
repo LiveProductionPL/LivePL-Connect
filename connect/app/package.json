@@ -1,0 +1,21 @@
+{
+  "name": "livepl-connect",
+  "productName": "LivePL Connect",
+  "version": "0.5.2",
+  "description": "LivePL Connect - zdalny pulpit po ID",
+  "author": "Karol Kowalski",
+  "license": "MIT",
+  "homepage": "https://app.livepl.eu/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LiveProductionPL/LivePL-Connect.git"
+  },
+  "main": "src/start.js",
+  "scripts": {
+    "start": "electron .",
+    "instalator": "node narzedzia/zrob-instalator.mjs"
+  },
+  "devDependencies": {
+    "electron": "32.1.2"
+  }
+}

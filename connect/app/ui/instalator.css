@@ -1,0 +1,146 @@
+/* Instalator LivePL Connect: lewa część zawsze w barwach marki (noc, czerwona wstęga),
+   prawa jak okna LivePL, w dzień jasna, w nocy ciemna. Ten sam wygląd co instalator przeglądarki LivePL. */
+
+:root {
+  --tlo: #ffffff;
+  --tlo-2: #f3f5f7;
+  --tekst: #1d2733;
+  --slaby: #6b7886;
+  --ramka: #d3d9df;
+  --hover: rgba(20, 35, 50, 0.06);
+  --czerwony: #b0261f;
+  --czerwony-jasny: #d23a2f;
+  --ok: #1f8a4c;
+  --turkus: #2a9fc2;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tlo: #16191e;
+    --tlo-2: #1c2027;
+    --tekst: #e6e9ee;
+    --slaby: #8b95a1;
+    --ramka: #2a3038;
+    --hover: rgba(255, 255, 255, 0.06);
+    --czerwony: #c42b23;
+    --czerwony-jasny: #e3463a;
+    --ok: #45c486;
+    --turkus: #3dbfe0;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color: var(--tekst);
+  background: var(--tlo);
+  user-select: none;
+}
+
+body { display: flex; }
+
+.ik { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------------------------------------------------------------- lewa część: marka */
+
+.marka-panel {
+  position: relative;
+  width: 290px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 44px 34px 26px;
+  background: #0d0f12;
+  color: #e6e9ee;
+  overflow: hidden;
+  -webkit-app-region: drag;
+}
+
+.wstega-tlo {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  bottom: 92px;
+  height: 120px;
+  background: linear-gradient(90deg, #8f1d17 0%, #c42b23 55%, #e3463a 100%);
+  transform: skewY(-12deg);
+  box-shadow: 0 20px 60px rgba(196, 43, 35, 0.35);
+}
+
+.wstega-tlo::after { content: ""; position: absolute; inset: 0 0 auto 0; height: 18px; background: rgba(255, 255, 255, 0.12); }
+
+.logo { position: relative; width: 100px; height: 100px; margin: -14px 0 10px -4px; }
+.nazwa { position: relative; display: flex; flex-direction: column; line-height: 1.05; }
+.nazwa b { font-size: 34px; font-weight: 800; font-style: italic; letter-spacing: -0.01em; }
+.nazwa em { color: #e3463a; }
+.nazwa strong { font-size: 26px; font-weight: 600; margin-top: 2px; }
+.nazwa span { margin-top: 8px; color: #8b95a1; font-size: 13px; }
+
+.wersja { position: relative; align-self: flex-start; margin-top: 14px; padding: 3px 10px; border-radius: 11px; border: 1px solid #2a3038; color: #c9d0d8; font-size: 12px; font-weight: 600; }
+.wersja:empty { display: none; }
+.prawa { position: relative; margin: auto 0 0; color: rgba(255, 255, 255, 0.75); font-size: 12px; }
+
+/* ---------------------------------------------------------------- prawa część */
+
+.tresc { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pasek-okna { display: flex; align-items: center; height: 40px; padding-left: 22px; -webkit-app-region: drag; }
+.tytul-okna { flex: 1; color: var(--slaby); font-size: 12px; }
+
+.okno-przycisk { -webkit-app-region: no-drag; width: 46px; height: 40px; display: grid; place-items: center; border: 0; background: none; color: var(--slaby); cursor: default; }
+.okno-przycisk .ik { width: 14px; height: 14px; }
+.okno-przycisk:hover { background: var(--hover); color: var(--tekst); }
+.okno-przycisk.zamknij:hover { background: #c42b23; color: #fff; }
+
+.ekran { flex: 1; display: flex; flex-direction: column; padding: 14px 40px 30px; animation: wejscie 0.22s ease-out; }
+.ekran.srodek { align-items: center; justify-content: center; text-align: center; padding-bottom: 48px; }
+@keyframes wejscie { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+h1 { font-size: 26px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
+.wstep { margin: 0 0 22px; color: var(--slaby); font-size: 14.5px; max-width: 440px; }
+
+.cechy { list-style: none; margin: 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.cechy li { display: flex; gap: 14px; align-items: flex-start; }
+.cechy b { display: block; font-weight: 600; }
+.cechy span { color: var(--slaby); font-size: 13px; }
+
+.cecha-ik { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--czerwony) 12%, transparent); color: var(--czerwony-jasny); }
+.cecha-ik .ik { width: 19px; height: 19px; }
+
+.opcja { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500; margin-bottom: 10px; }
+.opcja input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.znacznik { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 1.5px solid var(--ramka); background: var(--tlo); display: grid; place-items: center; transition: background 0.12s, border-color 0.12s; }
+.opcja input:checked + .znacznik { background: var(--czerwony); border-color: var(--czerwony); }
+.opcja input:checked + .znacznik::after { content: ""; width: 10px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+.opcja input:focus-visible + .znacznik { outline: 2px solid var(--turkus); outline-offset: 2px; }
+
+.uwaga { margin: 4px 0 0; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, #e0a23a 14%, transparent); color: var(--tekst); font-size: 13px; }
+
+.dol { margin-top: auto; display: flex; align-items: flex-end; gap: 16px; }
+.gdzie { flex: 1; margin: 0; color: var(--slaby); font-size: 12px; overflow-wrap: anywhere; }
+
+.przyciski { display: flex; gap: 8px; flex: none; }
+.przycisk { height: 40px; padding: 0 22px; border-radius: 10px; border: 1px solid var(--ramka); background: var(--tlo); color: var(--tekst); font: inherit; font-weight: 600; cursor: pointer; }
+.przycisk:hover { background: var(--hover); }
+.przycisk.glowny { background: var(--czerwony); border-color: var(--czerwony); color: #fff; min-width: 140px; }
+.przycisk.glowny:hover { filter: brightness(1.08); }
+.przycisk.tekstowy { border-color: transparent; background: none; color: var(--slaby); }
+.przycisk.tekstowy:hover { color: var(--tekst); background: var(--hover); }
+.przycisk:focus-visible { outline: 2px solid var(--turkus); outline-offset: 2px; }
+.przycisk:disabled { opacity: 0.6; cursor: default; }
+
+.pasek-postepu { height: 10px; margin-top: 18px; border-radius: 5px; background: var(--tlo-2); border: 1px solid var(--ramka); overflow: hidden; }
+.pasek-postepu i { display: block; height: 100%; width: 0; border-radius: 5px; background: linear-gradient(90deg, #8f1d17, var(--czerwony-jasny)); transition: width 0.2s ease-out; }
+.procent { margin: 10px 0 0; color: var(--slaby); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+.gotowe-ik { width: 72px; height: 72px; margin-bottom: 18px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); animation: wyskok 0.35s cubic-bezier(.2, 1.4, .4, 1); }
+.gotowe-ik .ik { width: 36px; height: 36px; stroke-width: 2.2; }
+.gotowe-ik.zly { background: color-mix(in srgb, var(--czerwony) 14%, transparent); color: var(--czerwony-jasny); }
+@keyframes wyskok { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.ekran.srodek .przyciski { margin-top: 10px; }

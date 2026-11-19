@@ -47,6 +47,7 @@
       naOkno: na('okno-stan'),
       kopiuj: function (t) { return wywolaj('kopiuj', [String(t)]); },
       noweHaslo: function () { return wywolaj('nowe-haslo'); },
+      noweId: function () { return wywolaj('nowe-id'); },
       ustawSerwer: function (a) { return wywolaj('ustaw-serwer', [String(a || '')]); },
       sprawdzAktualizacje: function () { return wywolaj('sprawdz-aktualizacje'); },
       aktualizuj: function () { return wywolaj('aktualizuj'); },

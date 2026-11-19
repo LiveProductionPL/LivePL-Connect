@@ -347,7 +347,40 @@ L.naOkno((o) => {
 
 // ---------------------------------------------------------------- ustawienia
 
+// ---------------------------------------------------------------- stałe ID (nowe tylko na życzenie)
+
+let noweIdCzas = null;
+function pokazId() {
+  clearTimeout(noweIdCzas);
+  noweIdCzas = null;
+  $('#ust-id').textContent = S.id ? formatuj(S.id) : '—';
+  $('#ust-id-opis').textContent = 'Zostaje na stałe. Zmieni się tylko po kliknięciu „Nowe ID”.';
+  $('#ust-nowe-id').textContent = 'Nowe ID';
+  $('#ust-nowe-id').classList.remove('glowny');
+}
+$('#ust-nowe-id').addEventListener('click', async () => {
+  if (!noweIdCzas) {
+    // pierwsze kliknięcie tylko pyta: stare ID przestanie działać na zawsze
+    $('#ust-id-opis').textContent = 'Stare ID przestanie działać i nikt go już nie dostanie. Kto je zna, nie połączy się. Trwające połączenia zostaną przerwane.';
+    $('#ust-nowe-id').textContent = 'Tak, zmień ID';
+    $('#ust-nowe-id').classList.add('glowny');
+    noweIdCzas = setTimeout(pokazId, 8000);
+    return;
+  }
+  clearTimeout(noweIdCzas);
+  noweIdCzas = null;
+  $('#ust-nowe-id').disabled = true;
+  const w = await L.noweId();
+  $('#ust-nowe-id').disabled = false;
+  pokazId();
+  if (!w || !w.ok) { bladUstawien((w && w.blad) || 'Nie udało się zmienić ID.'); return; }
+  pokazStatus({ stan: 'laczenie', id: null, haslo: null });
+  zamknijUstawienia();
+  toast('Ten komputer dostaje nowe ID', 'odswiez');
+});
+
 function otworzUstawienia(naDostep) {
+  pokazId();
   $('#ust-serwer').value = S.serwer || '';
   $('#ust-wersja').textContent = S.wersja || '';
   $('#ust-komunikat').textContent = '';

@@ -29,6 +29,7 @@ import (
 type sigMsg struct {
 	Type     string          `json:"type"`
 	ID       string          `json:"id,omitempty"`
+	Key      string          `json:"key,omitempty"`
 	Password string          `json:"password,omitempty"`
 	To       string          `json:"to,omitempty"`
 	From     string          `json:"from,omitempty"`
@@ -48,6 +49,7 @@ var (
 	conn   *websocket.Conn
 	wsMu   sync.Mutex
 	myID   string
+	myKey  string // secret that owns myID on the server (from the desktop app)
 	myPass string
 	iceURLs   []string
 	idFile    string
@@ -81,6 +83,7 @@ func main() {
 
 	myPass = randDigits(6)
 	loadPermanentPassword()
+	loadIDKey()
 
 	// Reconnect loop: if the rendezvous link drops (network blip, server restart),
 	// re-dial and re-register with the SAME ID so it stays stable. Active WebRTC
@@ -103,7 +106,8 @@ func runConn(server string) error {
 	conn = c
 	wsMu.Unlock()
 	// ID is empty on first run (server assigns one) and reused on reconnect.
-	sendSig(sigMsg{Type: "register", ID: myID})
+	// The key proves to the server that this ID is ours, so it stays the same.
+	sendSig(sigMsg{Type: "register", ID: myID, Key: myKey})
 	for {
 		_, data, err := c.ReadMessage()
 		if err != nil {
@@ -121,6 +125,12 @@ func runConn(server string) error {
 				printReady()
 			}
 			fmt.Println("STATUS online")
+		case "replaced":
+			// Another computer with the same key (a cloned disk or copied settings)
+			// took this ID. Take a new one instead of fighting over it.
+			log.Printf("this ID is now used by another computer with the same key; asking for a new ID")
+			myID = ""
+			return fmt.Errorf("ID taken over")
 		case "connect":
 			if tooManyWrongTries() {
 				log.Printf("connection from %s refused: too many wrong passwords recently", m.From)

@@ -63,6 +63,21 @@ func loadPermanentPassword() {
 	log.Printf("permanent password: enabled (unattended access)")
 }
 
+// loadIDKey reads the secret that owns this computer's ID. It comes in an
+// environment variable (not the command line, which other users can see in the
+// process list) and is removed from the environment right away.
+func loadIDKey() {
+	v := os.Getenv("LPC_KLUCZ_ID")
+	_ = os.Unsetenv("LPC_KLUCZ_ID")
+	if len(v) != 64 {
+		return
+	}
+	if _, err := hex.DecodeString(v); err != nil {
+		return
+	}
+	myKey = v
+}
+
 // pbkdf2SHA256 derives one 32-byte block, identical to Node's
 // crypto.pbkdf2Sync(password, salt, iter, 32, 'sha256').
 func pbkdf2SHA256(password, salt []byte, iter int) []byte {

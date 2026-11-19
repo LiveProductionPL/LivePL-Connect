@@ -85,17 +85,61 @@ namespace LivePL.Connect
             }
         }
 
-        static void ZapiszUstawienia()
+        static bool ZapiszUstawienia()
         {
-            if (bezZapisu) { Log("zapis ustawień pominięty (plik był nieczytelny)"); return; }
+            if (bezZapisu) { Log("zapis ustawień pominięty (plik był nieczytelny)"); return false; }
             try
             {
                 Directory.CreateDirectory(daneFolder);
                 var tmp = PlikUstawien + ".nowy";
                 File.WriteAllText(tmp, json.Serialize(ustawienia), new UTF8Encoding(false));
                 if (File.Exists(PlikUstawien)) File.Replace(tmp, PlikUstawien, null); else File.Move(tmp, PlikUstawien);
+                return true;
             }
-            catch (Exception e) { Log("zapis ustawień: " + e.Message); }
+            catch (Exception e) { Log("zapis ustawień: " + e.Message); return false; }
+        }
+
+        // Stałe ID: losowy klucz komputera (w ustawieniach) potwierdza serwerowi, że ID jest nasze.
+        // Dzięki temu ID nie zmienia się po zerwaniu łącza, a gdy komputer jest wyłączony, nikt inny go nie zajmie.
+        // Każdy serwer dostaje inny klucz (HMAC z nazwą serwera), więc obcy serwer nie pozna klucza do livepl.eu.
+        static string KluczIdDla(string serwer)
+        {
+            var glowny = Tekst("kluczId");
+            if (glowny == null || !Regex.IsMatch(glowny, "^[0-9a-f]{64}$"))
+            {
+                var b = new byte[32];
+                using (var los = RandomNumberGenerator.Create()) los.GetBytes(b);
+                ustawienia["kluczId"] = Hex(b);
+                // klucz, którego nie da się zapisać, zmieniałby ID przy każdym starcie: wtedy działamy jak dawniej
+                if (!ZapiszUstawienia()) { ustawienia.Remove("kluczId"); return null; }
+                glowny = Tekst("kluczId");
+                Log("ID: nowy klucz komputera");
+            }
+            string nazwa;
+            try { nazwa = new Uri(serwer).Host.ToLowerInvariant(); } catch { nazwa = serwer.ToLowerInvariant(); }
+            using (var h = new HMACSHA256(Encoding.ASCII.GetBytes(glowny)))
+                return Hex(h.ComputeHash(Encoding.UTF8.GetBytes("livepl-connect-id|" + nazwa)));
+        }
+
+        // Nowe ID na życzenie: nowy klucz i brak starego ID. Stare ID zostaje na serwerze przy starym kluczu,
+        // którego już nikt nie ma, więc nikt inny go nie dostanie (wygasa po roku).
+        static Dictionary<string, object> NoweId()
+        {
+            var stareId = ustawienia.ContainsKey("id") ? ustawienia["id"] : null;
+            var staryKlucz = ustawienia.ContainsKey("kluczId") ? ustawienia["kluczId"] : null;
+            ustawienia.Remove("id");
+            ustawienia.Remove("kluczId");
+            if (!ZapiszUstawienia())
+            {
+                if (stareId != null) ustawienia["id"] = stareId;
+                if (staryKlucz != null) ustawienia["kluczId"] = staryKlucz;
+                return new Dictionary<string, object> { { "ok", false }, { "blad", "Nie mogę zapisać ustawień, więc ID zostaje bez zmian." } };
+            }
+            Log("ID: nowe na życzenie");
+            hostInfo = null;
+            UstawStatus("laczenie");
+            RestartHosta();
+            return new Dictionary<string, object> { { "ok", true } };
         }
 
         static string Tekst(string klucz) { object v; return ustawienia.TryGetValue(klucz, out v) && v != null ? Convert.ToString(v) : null; }
@@ -186,6 +230,10 @@ namespace LivePL.Connect
                 var h = StaleHaslo;
                 p.EnvironmentVariables["LPC_STALE_HASLO"] = string.Join("$", new[] { "pbkdf2-sha256", Convert.ToString(h["iteracje"]), Convert.ToString(h["sol"]), Convert.ToString(h["skrot"]) });
             }
+            // klucz, którym serwer rozpoznaje, że to ID należy do tego komputera (też w zmiennej, nie w wierszu poleceń)
+            p.EnvironmentVariables.Remove("LPC_KLUCZ_ID");
+            var kluczId = KluczIdDla(Serwer);
+            if (kluczId != null) p.EnvironmentVariables["LPC_KLUCZ_ID"] = kluczId;
             // obsługa zdarzeń przed startem: pomocnik, który od razu się kończy, też zostanie uruchomiony ponownie
             var ten = new Process { StartInfo = p, EnableRaisingEvents = true };
             ten.OutputDataReceived += (o, e) =>
@@ -778,6 +826,7 @@ namespace LivePL.Connect
                 case "kopiuj":
                     Clipboard.SetText(a.Length > 0 && !string.IsNullOrEmpty(Convert.ToString(a[0])) ? Convert.ToString(a[0]) : " ");
                     return true;
+                case "nowe-id": return NoweId();
                 case "nowe-haslo":
                     if (host == null) { UruchomHosta(); return null; }
                     szybkiRestart = true;

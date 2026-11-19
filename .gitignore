@@ -23,7 +23,7 @@ connect/deploy/
 .env
 .env.*
 
-# stary prototyp programu, zastąpiony przez connect/app/src i connect/app/ui
+# stary prototyp programu (sprzed wersji z Electronem), zastąpiony przez connect/app/okno i connect/app/ui
 connect/app/main.js
 connect/app/renderer.js
 connect/app/preload.js

@@ -1,6 +1,8 @@
 // LivePL-Connect-Instalator.exe: mały program, który rozpakowuje LivePL Connect do folderu tymczasowego
 // (pokazując okienko „Przygotowuję instalator…” w barwach LivePL), uruchamia go w trybie instalatora,
 // czeka, aż instalator się zamknie, i sprząta folder tymczasowy.
+// LivePL Connect od 0.6.0 działa na silniku WebView2 z Windows. Gdy go brakuje (rzadko: stary Windows 10
+// bez aktualizacji Edge, wersje LTSC), ten program pobiera od Microsoftu i instaluje WebView2 Runtime.
 // Kompiluje go narzedzia/zrob-instalator.mjs kompilatorem C# z Windows (bez dodatkowych narzędzi).
 
 using System;
@@ -10,15 +12,100 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 [assembly: AssemblyTitle("Instalator LivePL Connect")]
 [assembly: AssemblyDescription("Instalator LivePL Connect: zdalny pulpit Live Production")]
 [assembly: AssemblyCompany("Live Production")]
 [assembly: AssemblyProduct("LivePL Connect")]
 [assembly: AssemblyCopyright("Copyright © 2026 Live Production Karol Kowalski (licencja MIT)")]
+[assembly: System.Runtime.Versioning.TargetFramework(".NETFramework,Version=v4.8", FrameworkDisplayName = ".NET Framework 4.8")]
+
+// Składnik Microsoft Edge WebView2 Runtime: sprawdzenie (tak jak radzi Microsoft: wartość „pv” w rejestrze)
+// i instalacja przez oficjalny mały instalator Microsoftu, zawsze ze sprawdzeniem podpisu Microsoftu.
+static class WebView2Runtime
+{
+    const string KLUCZ = @"Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}";
+    const string ADRES = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
+
+    static bool Wersja(RegistryKey baza, string sciezka)
+    {
+        try
+        {
+            using (var k = baza.OpenSubKey(sciezka))
+            {
+                var v = k == null ? null : k.GetValue("pv") as string;
+                return !string.IsNullOrEmpty(v) && v != "0.0.0.0";
+            }
+        }
+        catch { return false; }
+    }
+
+    public static bool Jest()
+    {
+        return Wersja(Registry.LocalMachine, @"SOFTWARE\WOW6432Node\" + KLUCZ) || Wersja(Registry.LocalMachine, @"SOFTWARE\" + KLUCZ)
+            || Wersja(Registry.CurrentUser, @"Software\" + KLUCZ);
+    }
+
+    [DllImport("wintrust.dll", CharSet = CharSet.Unicode)]
+    static extern int WinVerifyTrust(IntPtr hwnd, [MarshalAs(UnmanagedType.LPStruct)] Guid action, ref WINTRUST_DATA data);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct WINTRUST_FILE_INFO { public int cbStruct; public string pcwszFilePath; public IntPtr hFile; public IntPtr pgKnownSubject; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct WINTRUST_DATA
+    {
+        public int cbStruct; public IntPtr pPolicyCallbackData, pSIPClientData; public int dwUIChoice, fdwRevocationChecks, dwUnionChoice;
+        public IntPtr pFile; public int dwStateAction; public IntPtr hWVTStateData, pwszURLReference; public int dwProvFlags, dwUIContext; public IntPtr pSignatureSettings;
+    }
+
+    // ważny podpis Authenticode, a podpisującym jest Microsoft Corporation
+    static bool PodpisMicrosoftu(string plik)
+    {
+        var fi = new WINTRUST_FILE_INFO { cbStruct = Marshal.SizeOf(typeof(WINTRUST_FILE_INFO)), pcwszFilePath = plik };
+        var pfi = Marshal.AllocHGlobal(fi.cbStruct);
+        try
+        {
+            Marshal.StructureToPtr(fi, pfi, false);
+            var d = new WINTRUST_DATA { cbStruct = Marshal.SizeOf(typeof(WINTRUST_DATA)), dwUIChoice = 2 /* WTD_UI_NONE */, dwUnionChoice = 1 /* plik */, pFile = pfi };
+            var akcja = new Guid("00AAC56B-CD44-11d0-8CC2-00C04FC295EE"); // WINTRUST_ACTION_GENERIC_VERIFY_V2
+            if (WinVerifyTrust(IntPtr.Zero, akcja, ref d) != 0) return false;
+            var cert = X509Certificate.CreateFromSignedFile(plik);
+            return cert.Subject.Contains("O=Microsoft Corporation");
+        }
+        catch { return false; }
+        finally { Marshal.FreeHGlobal(pfi); }
+    }
+
+    // null, gdy się udało; inaczej opis błędu
+    public static string Zainstaluj(Action<string> napis)
+    {
+        var plik = Path.Combine(Path.GetTempPath(), "MicrosoftEdgeWebview2Setup-" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".exe");
+        try
+        {
+            napis("Pobieram składnik Microsoft WebView2…");
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | (SecurityProtocolType)12288;
+            using (var k = new WebClient()) k.DownloadFile(ADRES, plik);
+            if (!PodpisMicrosoftu(plik)) return "Pobrany instalator WebView2 nie ma ważnego podpisu Microsoftu.";
+            napis("Instaluję składnik Microsoft WebView2…");
+            using (var p = Process.Start(new ProcessStartInfo(plik, "/silent /install") { UseShellExecute = false, CreateNoWindow = true }))
+            {
+                if (!p.WaitForExit(10 * 60 * 1000)) return "Instalacja WebView2 trwa zbyt długo.";
+            }
+            for (int i = 0; i < 20 && !Jest(); i++) Thread.Sleep(500);
+            return Jest() ? null : "Po instalacji nadal brakuje składnika WebView2.";
+        }
+        catch (Exception e) { return e.Message; }
+        finally { try { File.Delete(plik); } catch { } }
+    }
+}
 
 static class Program
 {
@@ -151,10 +238,64 @@ class Okno : Form
         try { BeginInvoke((Action)(() => { postep = p; if (t != null) napis = t; Invalidate(); })); } catch { }
     }
 
+    // ten sam ślad nieudanej aktualizacji co w programie (okno/Program.cs, klasa Nieudana)
+    static void ZapiszNieudana(string powod)
+    {
+        try
+        {
+            var a = Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false);
+            var wersja = a.Length > 0 ? ((AssemblyInformationalVersionAttribute)a[0]).InformationalVersion : "?";
+            var dane = Environment.GetEnvironmentVariable("LPC_DANE");
+            var folder = !string.IsNullOrEmpty(dane) ? Path.Combine(dane, "lokalne")
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LivePL Connect");
+            Directory.CreateDirectory(folder);
+            File.WriteAllText(Path.Combine(folder, "aktualizacja-nieudana.txt"), wersja + "\n" + DateTime.UtcNow.ToString("o") + "\n" + (powod ?? "").Replace("\n", " ") + "\n");
+        }
+        catch { }
+    }
+
+    // brak WebView2 przy aktualizacji: stara wersja już się zamknęła, więc ją przywracamy (komputer bez obsługi
+    // nie może zostać bez LivePL Connect); przy zwykłej instalacji mówimy, co zrobić
+    bool ZapewnijWebView2()
+    {
+        // LPC_TEST_WEBVIEW2=brak: tylko do testów, udaje brak WebView2 i nieudaną instalację (bez pobierania)
+        var test = Environment.GetEnvironmentVariable("LPC_TEST_WEBVIEW2") == "brak";
+        if (!test && WebView2Runtime.Jest()) return true;
+        var blad = test ? "test: brak WebView2" : WebView2Runtime.Zainstaluj(t => Ustaw(0f, t));
+        if (blad == null) return true;
+        var aktualizacja = argumenty.Any(a => a == "--aktualizuj" || a == "--updated");
+        if (aktualizacja)
+        {
+            Kod = 3;
+            var cel = argumenty.Where(a => a.StartsWith("--cel=")).Select(a => a.Substring(6)).FirstOrDefault()
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "LivePL Connect");
+            var exe = Path.Combine(cel, "LivePL Connect.exe");
+            ZapiszNieudana("brak WebView2: " + blad);
+            var arg = argumenty.Contains("--w-tle") ? "--autostart" : "";
+            // wersja z Electronem spróbowałaby aktualizacji za kilka sekund, i tak w kółko: do jej następnego
+            // uruchomienia (np. po restarcie Windows) wyłączamy jej dostęp do serwera aktualizacji
+            if (File.Exists(Path.Combine(cel, "resources", "app", "package.json")))
+                arg = (arg + " \"--host-resolver-rules=MAP aktualizacje.livepl.eu ~NOTFOUND\"").Trim();
+            try { if (File.Exists(exe)) Process.Start(new ProcessStartInfo(exe, arg) { UseShellExecute = false, WorkingDirectory = cel }); } catch { }
+            return false;
+        }
+        Kod = 2;
+        try
+        {
+            Invoke((Action)(() => MessageBox.Show(this, "LivePL Connect potrzebuje składnika Microsoft Edge WebView2, a nie udało się go zainstalować.\n\n" + blad
+                + "\n\nSprawdź połączenie z internetem i uruchom instalator jeszcze raz. Możesz też zainstalować „Microsoft Edge WebView2 Runtime” ze strony Microsoftu.",
+                "Instalator LivePL Connect", MessageBoxButtons.OK, MessageBoxIcon.Warning)));
+        }
+        catch { }
+        return false;
+    }
+
     void Rozpakuj()
     {
         try
         {
+            if (!ZapewnijWebView2()) return;
+            Ustaw(0f, "Przygotowuję instalator…");
             using (var zasob = Assembly.GetExecutingAssembly().GetManifestResourceStream("paczka.zip"))
             using (var zip = new ZipArchive(zasob, ZipArchiveMode.Read))
             {

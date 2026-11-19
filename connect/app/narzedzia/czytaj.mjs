@@ -24,7 +24,7 @@ export function podpisPliku(plik) {
 
 export function zapiszCzytaj(folder, { wersja, plik, sha256, rozmiar, data }, zmiany = []) {
   const p = podpisPliku(join(folder, plik));
-  const mb = Math.round(rozmiar / 1048576);
+  const mb = rozmiar < 10 * 1048576 ? (rozmiar / 1048576).toFixed(1).replace('.', ',') : String(Math.round(rozmiar / 1048576));
   const podpis = p.stan === 'Valid'
     ? [`Instalator jest podpisany cyfrowo (wydawca: ${p.podmiot}, certyfikat ${p.wystawca})` +
         (p.znacznik ? ',\nze znacznikiem czasu, więc podpis zostaje ważny także po wygaśnięciu certyfikatu.' : ', bez znacznika czasu.')]
@@ -39,6 +39,7 @@ export function zapiszCzytaj(folder, { wersja, plik, sha256, rozmiar, data }, zm
     '',
     'DO PRZENOSZENIA NA INNE KOMPUTERY',
     `  ${plik}   ${mb} MB   cały program w jednym pliku, instaluje się bez internetu`,
+    '  (Windows 10 bez składnika Microsoft Edge WebView2: instalator sam go pobierze od Microsoftu)',
     '',
     ...podpis,
     'Po instalacji LivePL Connect sam się aktualizuje z aktualizacje.livepl.eu/connect.',

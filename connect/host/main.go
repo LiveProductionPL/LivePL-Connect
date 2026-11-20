@@ -35,6 +35,14 @@ type sigMsg struct {
 	From     string          `json:"from,omitempty"`
 	Data     json.RawMessage `json:"data,omitempty"`
 	Error    string          `json:"error,omitempty"`
+	ICE      []iceServer     `json:"ice,omitempty"` // TURN relay from the server (0.6.2+)
+}
+
+// iceServer is a relay the server hands out with each connect request.
+type iceServer struct {
+	URLs       []string `json:"urls"`
+	Username   string   `json:"username,omitempty"`
+	Credential string   `json:"credential,omitempty"`
 }
 
 const (
@@ -144,7 +152,7 @@ func runConn(server string) error {
 				sendSig(sigMsg{Type: "error", To: m.From, Error: "wrong password"})
 				continue
 			}
-			go startSession(m.From)
+			go startSession(m.From, m.ICE)
 		case "answer":
 			if s := getSession(m.From); s != nil {
 				s.onAnswer(m.Data)
@@ -209,12 +217,30 @@ func (s *session) markConnected() {
 	}
 }
 
-func startSession(peer string) {
+func startSession(peer string, relay []iceServer) {
 	cfg := webrtc.Configuration{}
 	for _, u := range iceURLs {
 		cfg.ICEServers = append(cfg.ICEServers, webrtc.ICEServer{URLs: []string{u}})
 	}
+	direct := cfg
+	// The relay is the fallback for networks where a direct path cannot be made
+	// (mobile carriers, strict NATs). ICE still prefers the direct path.
+	for _, r := range relay {
+		var urls []string
+		for _, u := range r.URLs {
+			if strings.HasPrefix(u, "turn:") || strings.HasPrefix(u, "turns:") {
+				urls = append(urls, u)
+			}
+		}
+		if len(urls) > 0 && r.Username != "" && r.Credential != "" {
+			cfg.ICEServers = append(cfg.ICEServers, webrtc.ICEServer{URLs: urls, Username: r.Username, Credential: r.Credential, CredentialType: webrtc.ICECredentialTypePassword})
+		}
+	}
 	pc, err := webrtc.NewPeerConnection(cfg)
+	if err != nil && len(cfg.ICEServers) > len(direct.ICEServers) {
+		log.Printf("relay rejected (%v); trying without it", err)
+		pc, err = webrtc.NewPeerConnection(direct)
+	}
 	if err != nil {
 		log.Printf("peer connection: %v", err)
 		return

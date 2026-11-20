@@ -1,15 +1,21 @@
 // LivePL Connect — rendezvous server (AnyDesk-style).
 // It assigns each host a short numeric ID, routes WebRTC signaling between a
-// controller and a host by that ID, and serves the controller web UI. It never
-// sees the media (screen frames / input) — those flow peer-to-peer over WebRTC.
+// controller and a host by that ID, and serves the controller web UI. Media
+// (screen frames / input) flows over WebRTC, encrypted end to end (DTLS):
+// directly between the peers when the networks allow it, otherwise through the
+// TURN relay (coturn) for which this server hands out short-lived credentials.
 package main
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
@@ -17,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -35,6 +42,14 @@ type Msg struct {
 	From     string          `json:"from,omitempty"`     // source connId (set by server)
 	Data     json.RawMessage `json:"data,omitempty"`     // SDP / ICE payload
 	Error    string          `json:"error,omitempty"`
+	ICE      []iceServer     `json:"ice,omitempty"` // relay for this peer (set by server only)
+}
+
+// iceServer is a TURN relay entry in the WebRTC RTCIceServer format.
+type iceServer struct {
+	URLs       []string `json:"urls"`
+	Username   string   `json:"username,omitempty"`
+	Credential string   `json:"credential,omitempty"`
 }
 
 type client struct {
@@ -61,6 +76,15 @@ const (
 )
 
 var probeWait = 5 * time.Second // how long a probed holder has to answer (shorter in tests)
+
+// TURN relay (coturn with use-auth-secret): credentials are HMAC-SHA1 of
+// "<expiry>:<connID>" with the shared secret, valid for turnTTL.
+var (
+	turnSecret []byte
+	turnURLs   []string
+)
+
+const turnTTL = 24 * time.Hour
 
 var (
 	upgrader = websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
@@ -90,6 +114,7 @@ func main() {
 	}
 	loadOwners()
 	go saveLoop()
+	loadTURN()
 
 	http.HandleFunc("/ws", serveWS)
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
@@ -166,7 +191,7 @@ func handle(c *client, m *Msg) {
 			c.pushJSON(Msg{Type: "error", Error: "no online host with that ID"})
 			return
 		}
-		host.pushJSON(Msg{Type: "connect", From: c.connID, Password: m.Password})
+		host.pushJSON(Msg{Type: "connect", From: c.connID, Password: m.Password, ICE: turnFor(host.connID)})
 
 	default:
 		// Generic routed frame (offer/answer/ice/control-channel setup).
@@ -178,6 +203,12 @@ func handle(c *client, m *Msg) {
 		mu.RUnlock()
 		if dst != nil {
 			m.From = c.connID
+			// Only the server hands out relays: the controller gets one with the
+			// offer, i.e. only after the host has accepted the password.
+			m.ICE = nil
+			if m.Type == "offer" {
+				m.ICE = turnFor(dst.connID)
+			}
 			b, _ := json.Marshal(m)
 			dst.push(b)
 		}
@@ -460,4 +491,33 @@ func randDigits(n int) string {
 		b[i] = byte('0' + d.Int64())
 	}
 	return string(b)
+}
+
+func loadTURN() {
+	secret := os.Getenv("CONNECT_TURN_SECRET")
+	_ = os.Unsetenv("CONNECT_TURN_SECRET")
+	for _, u := range strings.Split(os.Getenv("CONNECT_TURN_URLS"), ",") {
+		u = strings.TrimSpace(u)
+		if strings.HasPrefix(u, "turn:") || strings.HasPrefix(u, "turns:") {
+			turnURLs = append(turnURLs, u)
+		}
+	}
+	if secret == "" || len(turnURLs) == 0 {
+		turnURLs = nil
+		log.Printf("TURN relay: off")
+		return
+	}
+	turnSecret = []byte(secret)
+	log.Printf("TURN relay: %s", strings.Join(turnURLs, ", "))
+}
+
+// turnFor returns relay credentials for one connection, or nil when TURN is off.
+func turnFor(connID string) []iceServer {
+	if len(turnSecret) == 0 {
+		return nil
+	}
+	user := fmt.Sprintf("%d:%s", time.Now().Add(turnTTL).Unix(), connID)
+	mac := hmac.New(sha1.New, turnSecret)
+	mac.Write([]byte(user))
+	return []iceServer{{URLs: turnURLs, Username: user, Credential: base64.StdEncoding.EncodeToString(mac.Sum(nil))}}
 }

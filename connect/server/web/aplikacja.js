@@ -148,7 +148,11 @@ async function sygnal(ev) {
   }
   if (m.type === 'offer') {
     hostConn = m.from;
-    pc = new RTCPeerConnection({ iceServers: ICE });
+    // Serwer dokłada przekaźnik (TURN) do oferty. Gdy bezpośrednia droga się nie da,
+    // obraz idzie przez przekaźnik, nadal zaszyfrowany od komputera do komputera.
+    const przekaznik = Array.isArray(m.ice) ? m.ice : [];
+    try { pc = new RTCPeerConnection({ iceServers: ICE.concat(przekaznik) }); }
+    catch { pc = new RTCPeerConnection({ iceServers: ICE }); }
     pc.onicecandidate = (e) => {
       if (e.candidate && ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'ice', to: hostConn, data: e.candidate.toJSON() }));
     };
@@ -168,7 +172,7 @@ async function sygnal(ev) {
     const odp = await pc.createAnswer();
     await pc.setLocalDescription(odp);
     ws.send(JSON.stringify({ type: 'answer', to: hostConn, data: odp }));
-    komunikat('Zestawiam bezpośrednie połączenie…');
+    komunikat('Zestawiam połączenie…');
   } else if (m.type === 'ice' && pc) {
     try { await pc.addIceCandidate(m.data); } catch { /* spóźniony kandydat */ }
   }

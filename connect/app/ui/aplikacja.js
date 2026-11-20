@@ -81,14 +81,38 @@ $('#nowe-haslo').addEventListener('click', () => {
 
 // ---------------------------------------------------------------- ostatnie połączenia
 
+// Lista jest w pliku ustawień programu (%APPDATA%\LivePL Connect\ustawienia.json), który przetrwa
+// aktualizacje i czyszczenie danych WebView2. localStorage to tylko kopia na czas wczytywania pliku
+// i źródło listy przy pierwszym uruchomieniu wersji, która zapisuje ją w pliku.
 const KLUCZ_OSTATNICH = 'lpc-ostatnie';
 
+function ostatnieLokalne() {
+  try { const l = JSON.parse(localStorage.getItem(KLUCZ_OSTATNICH)); return Array.isArray(l) ? l : []; } catch { return []; }
+}
+
+let listaOstatnich = ostatnieLokalne();
+
 function ostatnie() {
-  try { return JSON.parse(localStorage.getItem(KLUCZ_OSTATNICH)) || []; } catch { return []; }
+  return listaOstatnich;
 }
 
 function zapiszOstatnie(lista) {
-  try { localStorage.setItem(KLUCZ_OSTATNICH, JSON.stringify(lista.slice(0, 8))); } catch { /* bez pamięci też działa */ }
+  listaOstatnich = lista.slice(0, 8);
+  try { localStorage.setItem(KLUCZ_OSTATNICH, JSON.stringify(listaOstatnich)); } catch { /* bez pamięci też działa */ }
+  if (L.zapiszOstatnie) L.zapiszOstatnie(listaOstatnich).catch(() => { /* zostaje kopia w localStorage */ });
+}
+
+function wczytajOstatnie() {
+  if (!L.ostatnie) return;
+  L.ostatnie().then((zPliku) => {
+    if (Array.isArray(zPliku)) {
+      listaOstatnich = zPliku;
+      try { localStorage.setItem(KLUCZ_OSTATNICH, JSON.stringify(zPliku)); } catch { /* kopia niepotrzebna do działania */ }
+    } else if (listaOstatnich.length) {
+      zapiszOstatnie(listaOstatnich); // pierwszy start tej wersji: lista z WebView2 trafia do pliku
+    }
+    pokazOstatnie();
+  }).catch(() => { /* zostaje lista z localStorage */ });
 }
 
 function kiedy(ms) {
@@ -536,6 +560,7 @@ $('#baner-akcja').addEventListener('click', () => { $('#baner-akcja').disabled =
 L.naStatus(pokazStatus);
 L.naAktualizacje(aktualizacja);
 pokazOstatnie();
+wczytajOstatnie();
 L.stan().then((s) => {
   S = { ...S, ...s };
   $('#wersja').textContent = 'wersja ' + s.wersja;

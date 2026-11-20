@@ -55,6 +55,8 @@
       staleHaslo: function (h) { return wywolaj('stale-haslo', [String(h || '')]); },
       usunStaleHaslo: function () { return wywolaj('stale-haslo-usun'); },
       autostart: function (wl) { return wywolaj('autostart', [!!wl]); },
+      ostatnie: function () { return wywolaj('ostatnie'); },
+      zapiszOstatnie: function (lista) { return wywolaj('ostatnie-zapisz', [lista]); },
       okno: function (co) { wyslij('okno', [String(co)]); }
     });
   } else {

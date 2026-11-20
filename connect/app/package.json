@@ -1,7 +1,7 @@
 {
   "name": "livepl-connect",
   "productName": "LivePL Connect",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "LivePL Connect - zdalny pulpit po ID",
   "author": "Karol Kowalski",
   "license": "MIT",

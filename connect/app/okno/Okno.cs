@@ -38,6 +38,7 @@ namespace LivePL.Connect
         Rectangle granicePrzedPelnym;
         public bool PozwolZamknac;           // false: zamknięcie zgłasza Zamykanie, które może je zatrzymać
         public event Func<bool> Zamykanie;   // true = zostaw okno (np. schowaj do ikony przy zegarze)
+        public event Func<bool> Minimalizowanie; // true = okno poszło do ikony przy zegarze zamiast na pasek zadań
 
         public static bool Ciemny()
         {
@@ -226,9 +227,12 @@ namespace LivePL.Connect
         public bool Maksymalne { get { return IsHandleCreated && Win.IsZoomed(Handle); } }
         public bool Zminimalizowane { get { return IsHandleCreated && Win.IsIconic(Handle); } }
         public bool PelnyEkran { get { return pelny; } }
-        public void Minimalizuj() { Win.ShowWindow(Handle, Win.SW_MINIMIZE); }
+        public void Minimalizuj() { if (!DoZegara()) Win.ShowWindow(Handle, Win.SW_MINIMIZE); }
+
+        // Minimalizacja (przycisk na stronie, Win+strzałka w dół, menu Alt+Spacja, kliknięcie na pasku zadań)
+        // może zamiast paska zadań schować okno do ikony przy zegarze, jeśli program tego chce.
+        bool DoZegara() { var z = Minimalizowanie; return z != null && z(); }
         public void Przywroc() { Win.ShowWindow(Handle, Win.SW_RESTORE); }
-        public void PokazZminimalizowane() { Win.ShowWindow(Handle, Win.SW_SHOWMINNOACTIVE); }
 
         void Steruj(string co)
         {
@@ -285,6 +289,8 @@ namespace LivePL.Connect
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
+            // minimalizacja z pominięciem WM_SYSCOMMAND (np. Win+M): okno też trafia do ikony przy zegarze
+            if (Visible && Zminimalizowane && DoZegara()) return;
             if (Maksymalne != ostatnioMax)
             {
                 ostatnioMax = Maksymalne;
@@ -363,6 +369,11 @@ namespace LivePL.Connect
 
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == Win.WM_SYSCOMMAND && ((long)m.WParam & 0xFFF0) == Win.SC_MINIMIZE && DoZegara())
+            {
+                m.Result = IntPtr.Zero;
+                return;
+            }
             // Przywracanie z maksymalizacji lub minimalizacji: WinForms ustawia wtedy rozmiar, licząc pasek
             // tytułu, którego tu nie ma, i okno rosło za każdym razem. Wymuszamy rozmiar zapamiętany przez Windows.
             if (zmienny && m.Msg == Win.WM_WINDOWPOSCHANGED)

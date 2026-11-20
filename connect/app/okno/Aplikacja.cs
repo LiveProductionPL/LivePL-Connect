@@ -405,10 +405,19 @@ namespace LivePL.Connect
         static void PokazOkno()
         {
             if (okno == null || okno.IsDisposed) return;
-            if (!okno.Visible) okno.Show();
+            // najpierw przywrócenie (pokazuje też okno schowane w stanie zminimalizowanym, np. po Win+M),
+            // inaczej Show() pokazałby je na chwilę na pasku zadań i minimalizacja schowałaby je z powrotem
             if (okno.Zminimalizowane) okno.Przywroc();
+            if (!okno.Visible) okno.Show();
             okno.Activate();
             Win.SetForegroundWindow(okno.Handle);
+            // bez dostępu bez obsługi ikona przy zegarze jest tylko na czas schowanego okna
+            // (usuwamy ją chwilę później, bo PokazOkno bywa wywołane z kliknięcia tej ikony)
+            Opoznij(50, () =>
+            {
+                if (tray != null && !DostepBezObslugi && okno != null && !okno.IsDisposed && okno.Visible)
+                { tray.Visible = false; tray.Dispose(); tray = null; }
+            });
         }
 
         static void UtworzTray()
@@ -432,16 +441,23 @@ namespace LivePL.Connect
             tray.Text = t.Length > 63 ? t.Substring(0, 63) : t;
         }
 
-        // zamknięcie okna przy dostępie bez obsługi chowa je do ikony przy zegarze; komputer dalej czeka na połączenia
-        static void SchowajDoTla()
+        // Minimalizacja (zawsze) i zamknięcie okna przy dostępie bez obsługi chowają je do ikony przy zegarze,
+        // nie na pasek zadań; komputer dalej czeka na połączenia. podpowiedz=false: start z Windows, bez dymka.
+        static void SchowajDoTla(bool podpowiedz = true)
         {
             UtworzTray();
             OdswiezTray();
             okno.Hide();
-            if (!pokazanoInfoTla && !W_TLE)
-            {
-                pokazanoInfoTla = true;
+            if (!podpowiedz || pokazanoInfoTla) return;
+            pokazanoInfoTla = true;
+            if (DostepBezObslugi)
                 tray.ShowBalloonTip(8000, "LivePL Connect działa w tle", "Ten komputer jest dostępny po ID i stałym haśle. Ikona LivePL Connect jest przy zegarze.", ToolTipIcon.Info);
+            else if (Tekst("podpowiedzZegar") == null)
+            {
+                // zwykła minimalizacja: podpowiedź tylko za pierwszym razem na tym komputerze
+                ustawienia["podpowiedzZegar"] = true;
+                ZapiszUstawienia();
+                tray.ShowBalloonTip(8000, "LivePL Connect jest przy zegarze", "Kliknij ikonę LivePL Connect przy zegarze (czasem pod strzałką ^), żeby otworzyć okno.", ToolTipIcon.Info);
             }
         }
 
@@ -717,6 +733,32 @@ namespace LivePL.Connect
             }
         }
 
+        // ---------------------------------------------------------------- ostatnie połączenia
+
+        // Lista ostatnich połączeń jest w pliku ustawień (zapis od razu, przez plik tymczasowy), a nie tylko
+        // w danych WebView2: te silnik zapisuje z opóźnieniem (zamknięcie programu przy instalacji mogło zgubić
+        // ostatnią zmianę), a programy czyszczące lub naprawa WebView2 potrafią je usunąć w całości.
+        // Ze strony przyjmujemy tylko 9-cyfrowe ID i czas, najwyżej 8 pozycji.
+        static bool ZapiszOstatnie(object lista)
+        {
+            var pozycje = lista as System.Collections.IEnumerable;
+            if (pozycje == null || lista is string) return false;
+            var czyste = new List<Dictionary<string, object>>();
+            foreach (var p in pozycje)
+            {
+                var d = p as Dictionary<string, object>;
+                object id, kiedy;
+                if (d == null || !d.TryGetValue("id", out id) || !Regex.IsMatch(Convert.ToString(id) ?? "", @"^\d{9}$")) continue;
+                long ms = 0;
+                if (d.TryGetValue("kiedy", out kiedy)) try { ms = Convert.ToInt64(kiedy); } catch { }
+                if (czyste.Exists(x => (string)x["id"] == Convert.ToString(id))) continue;
+                czyste.Add(new Dictionary<string, object> { { "id", Convert.ToString(id) }, { "kiedy", ms } });
+                if (czyste.Count == 8) break;
+            }
+            ustawienia["ostatnie"] = czyste;
+            return ZapiszUstawienia();
+        }
+
         // ---------------------------------------------------------------- start
 
         public static int Uruchom()
@@ -752,12 +794,18 @@ namespace LivePL.Connect
                 if (!konczenie && DostepBezObslugi) { SchowajDoTla(); return true; }
                 return false;
             };
+            // minimalizacja chowa okno do ikony przy zegarze, nie na pasek zadań
+            okno.Minimalizowanie += () =>
+            {
+                if (konczenie) return false;
+                SchowajDoTla();
+                return true;
+            };
             okno.FormClosed += (o, e) => { if (!konczenie) Zakoncz(); };
             okno.Gotowe += () =>
             {
-                // start z Windows: przy dostępie bez obsługi od razu w tle, inaczej zminimalizowany
-                if (W_TLE && DostepBezObslugi) SchowajDoTla();
-                else if (W_TLE) okno.PokazZminimalizowane();
+                // start z Windows: od razu schowany przy zegarze (jak po minimalizacji), bez dymka
+                if (W_TLE) SchowajDoTla(false);
                 else { okno.Show(); okno.Activate(); }
                 Opoznij(20000, SprzatnijPoElectronie);
             };
@@ -842,6 +890,8 @@ namespace LivePL.Connect
                     ZapiszUstawienia();
                     RestartHosta();
                     return new Dictionary<string, object> { { "ok", true }, { "serwer", Serwer } };
+                case "ostatnie": { object v; return ustawienia.TryGetValue("ostatnie", out v) ? v : null; }
+                case "ostatnie-zapisz": return ZapiszOstatnie(a.Length > 0 ? a[0] : null);
                 case "sprawdz-aktualizacje": return SprawdzAktualizacje(true);
                 case "aktualizuj": return PobierzIZainstaluj(false);
                 case "sesja":

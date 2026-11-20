@@ -15,6 +15,7 @@ namespace LivePL.Connect
         public const int WM_GETMINMAXINFO = 0x0024;
         public const int WM_DPICHANGED = 0x02E0;
         public const int WM_SYSCOMMAND = 0x0112;
+        public const int SC_MINIMIZE = 0xF020;
         public const int WM_ACTIVATE = 0x0006;
         public const int WM_SETTINGCHANGE = 0x001A;
 
